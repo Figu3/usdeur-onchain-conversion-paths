@@ -12,32 +12,106 @@ const Dashboard = () => {
   const [eurUsdRate, setEurUsdRate] = useState(null);
   const [priceLoading, setPriceLoading] = useState(false);
 
-  // Real contract addresses for Euro stablecoins
+  // Euro stablecoins with multi-chain deployment info
   const euroStablecoins = [
     { 
       symbol: 'EURC', 
       name: 'Euro Coin', 
-      address: '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c',
       coingeckoId: 'euro-coin',
-      decimals: 6
+      chains: {
+        ethereum: { address: '0x1aBaEA1f7C830bD89Acc67eC4af516284b1bC33c', decimals: 6 },
+        base: { address: '0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42', decimals: 6 },
+        polygon: { address: '0x0782B6A8c8c71E02Ec39fbC97A0c12B8b7739AC1', decimals: 6 }
+      }
     },
     { 
       symbol: 'EURS', 
       name: 'STASIS EURO', 
-      address: '0xdB25f211AB05b1c97D595516F45794528a807ad8',
       coingeckoId: 'stasis-eurs',
-      decimals: 2
+      chains: {
+        ethereum: { address: '0xdB25f211AB05b1c97D595516F45794528a807ad8', decimals: 2 },
+        polygon: { address: '0xE111178A87A3BfF0c8d18dEcBa5798827539Ae99', decimals: 2 }
+      }
     },
     { 
       symbol: 'EURT', 
       name: 'Tether EUR', 
-      address: '0xC581b735A1688071A1746c968e0798d642EDE491',
       coingeckoId: 'tether-eurt',
-      decimals: 6
+      chains: {
+        ethereum: { address: '0xC581b735A1688071A1746c968e0798d642EDE491', decimals: 6 },
+        polygon: { address: '0x7BDF330f423Ea880FF95fC41A280fD5eCFD3D09f', decimals: 6 }
+      }
+    },
+    { 
+      symbol: 'EURe', 
+      name: 'Monerium EUR emoney', 
+      coingeckoId: 'monerium-eur',
+      chains: {
+        ethereum: { address: '0x3231Cb76718CDeF2155FC47b5286d82e6eDA273f', decimals: 18 },
+        gnosis: { address: '0xaB16e0d25c06cB376259cc18C1de4ACA57605589', decimals: 18 },
+        polygon: { address: '0x18ec0A6E18E5bc3784fDd3a3634b31245ab704F6', decimals: 18 }
+      }
     }
   ];
 
-  const USDC_ADDRESS = '0xA0b86a33E6417efb22d3e12dd9ffd82b1b4b74c';
+  const USDC_ADDRESSES = {
+    ethereum: '0xA0b86a33E6417efb22d3e12dd9ffd82b1b4b74c',
+    base: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+    polygon: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
+    gnosis: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
+  };
+
+  // Chain-specific configurations
+  const chainConfigs = {
+    ethereum: {
+      name: 'Ethereum',
+      gasPrice: 25, // Gwei
+      nativeTokenPrice: 2400, // ETH price
+      blockTime: 12, // seconds
+      avgGasLimit: 180000,
+      dexProtocols: [
+        { name: 'Uniswap V3', gasMultiplier: 1.0, feeBase: 0.003, slippageBase: 0.001 },
+        { name: '1inch', gasMultiplier: 1.8, feeBase: 0.002, slippageBase: 0.002 },
+        { name: 'Curve', gasMultiplier: 1.3, feeBase: 0.0004, slippageBase: 0.0005 }
+      ]
+    },
+    base: {
+      name: 'Base',
+      gasPrice: 0.001, // Much lower gas on Base
+      nativeTokenPrice: 2400, // ETH price (Base uses ETH)
+      blockTime: 2, // seconds
+      avgGasLimit: 150000,
+      dexProtocols: [
+        { name: 'BaseSwap', gasMultiplier: 1.0, feeBase: 0.0025, slippageBase: 0.0008 },
+        { name: 'Uniswap V3', gasMultiplier: 1.2, feeBase: 0.003, slippageBase: 0.001 },
+        { name: 'Aerodrome', gasMultiplier: 0.9, feeBase: 0.002, slippageBase: 0.0006 }
+      ]
+    },
+    polygon: {
+      name: 'Polygon',
+      gasPrice: 30, // Gwei (MATIC)
+      nativeTokenPrice: 0.7, // MATIC price
+      blockTime: 2, // seconds
+      avgGasLimit: 140000,
+      dexProtocols: [
+        { name: 'QuickSwap', gasMultiplier: 1.0, feeBase: 0.003, slippageBase: 0.0008 },
+        { name: 'SushiSwap', gasMultiplier: 1.1, feeBase: 0.003, slippageBase: 0.001 },
+        { name: 'Uniswap V3', gasMultiplier: 1.3, feeBase: 0.003, slippageBase: 0.001 }
+      ]
+    },
+    gnosis: {
+      name: 'Gnosis',
+      gasPrice: 2, // Gwei (xDAI)
+      nativeTokenPrice: 1.0, // xDAI = $1
+      blockTime: 5, // seconds
+      avgGasLimit: 120000,
+      dexProtocols: [
+        { name: 'Honeyswap', gasMultiplier: 1.0, feeBase: 0.003, slippageBase: 0.0005 },
+        { name: 'SushiSwap', gasMultiplier: 1.2, feeBase: 0.003, slippageBase: 0.0008 },
+        { name: 'CoW Protocol', gasMultiplier: 0.8, feeBase: 0.001, slippageBase: 0.0003 }
+      ]
+    }
+  };
 
   // Fetch real EUR/USD exchange rate
   const fetchEurUsdRate = async () => {
@@ -90,7 +164,7 @@ const Dashboard = () => {
     }
   };
 
-  // Generate realistic quotes with real market data
+  // Generate realistic quotes with multi-chain support
   const generateRealisticQuotes = async (amount, currentEurRate) => {
     try {
       setLoading(true);
@@ -99,138 +173,116 @@ const Dashboard = () => {
       const allQuotes = [];
       const prices = await fetchRealTokenPrices();
       
-      console.log('Fetching market data for amount:', amount);
+      console.log('Fetching multi-chain quotes for amount:', amount);
       
+      // Generate quotes for each coin on each supported chain
       for (const coin of euroStablecoins) {
-        console.log(`Processing ${coin.symbol}...`);
-        
         const coinPrice = prices?.[coin.coingeckoId];
         const marketRate = coinPrice?.eur || currentEurRate;
         
-        // Real DEX-style quotes with current market conditions
-        const dexQuotes = [
-          {
-            name: '1inch',
-            protocol: '1inch',
-            gasEstimate: 180000,
-            feeRate: 0.003,
-            slippageRate: 0.002 + (Math.random() * 0.001) // 0.2-0.3% slippage
-          },
-          {
-            name: 'Uniswap V3',
-            protocol: 'uniswap-v3',
-            gasEstimate: 150000,
-            feeRate: 0.003, // 0.3% pool fee
-            slippageRate: 0.001 + (Math.random() * 0.001) // 0.1-0.2% slippage
-          },
-          {
-            name: 'Curve',
-            protocol: 'curve',
-            gasEstimate: 200000,
-            feeRate: 0.0004, // Lower fees for stablecoins
-            slippageRate: 0.0005 + (Math.random() * 0.0005) // Very low slippage
-          }
-        ];
-
-        // Current gas price (approximate)
-        const currentGasPrice = 25; // Gwei
-        const ethPrice = 2400; // Approximate ETH price
-
-        dexQuotes.forEach(dex => {
-          const gasCostUSD = (currentGasPrice * dex.gasEstimate * ethPrice) / 1e18;
-          const tradingFee = amount * dex.feeRate;
-          const slippageCost = amount * dex.slippageRate;
+        // Generate quotes for each chain where this coin is deployed
+        for (const [chainName, chainData] of Object.entries(coin.chains)) {
+          const chainConfig = chainConfigs[chainName];
+          if (!chainConfig) continue;
           
-          // Calculate output with real market rate
-          const grossOutput = amount * marketRate;
-          const netAfterFees = grossOutput - (tradingFee * marketRate) - (slippageCost * marketRate);
-          const finalOutput = netAfterFees - gasCostUSD;
+          console.log(`Processing ${coin.symbol} on ${chainConfig.name}...`);
+          
+          // Generate DEX quotes for this chain
+          chainConfig.dexProtocols.forEach(dex => {
+            const gasCostNative = (chainConfig.gasPrice * chainConfig.avgGasLimit * dex.gasMultiplier) / 1e18;
+            const gasCostUSD = gasCostNative * chainConfig.nativeTokenPrice;
+            const tradingFee = amount * dex.feeBase;
+            const slippageCost = amount * dex.slippageBase;
+            
+            // FIXED: Properly convert USD input to EUR stablecoin output
+            const grossOutputEUR = amount * currentEurRate;
+            const marketAdjustedOutput = grossOutputEUR * marketRate;
+            const afterTradingFees = marketAdjustedOutput - (tradingFee * currentEurRate);
+            const afterSlippage = afterTradingFees - (slippageCost * currentEurRate);
+            const gasCostEUR = gasCostUSD * currentEurRate;
+            const finalOutput = afterSlippage - gasCostEUR;
 
-          if (finalOutput > 0) {
-            allQuotes.push({
-              id: `${coin.symbol}-${dex.protocol}`,
-              stablecoin: coin.symbol,
-              stablecoinName: coin.name,
-              type: 'DEX',
-              name: dex.name,
-              exchange: `${dex.name} (Market)`,
-              protocol: dex.protocol,
-              inputAmount: amount,
-              outputAmount: grossOutput,
-              gasCost: gasCostUSD,
-              tradingFee: tradingFee,
-              slippage: slippageCost,
-              totalCost: gasCostUSD + tradingFee + slippageCost,
-              netOutput: Math.max(0, finalOutput),
-              liquidity: "High",
-              estimatedTime: "~2-5 mins",
-              route: ["USDC", coin.symbol],
-              realData: true,
-              marketPrice: marketRate
+            if (finalOutput > 0) {
+              allQuotes.push({
+                id: `${coin.symbol}-${chainName}-${dex.name.toLowerCase()}`,
+                stablecoin: coin.symbol,
+                stablecoinName: coin.name,
+                type: 'DEX',
+                name: dex.name,
+                exchange: `${dex.name} (${chainConfig.name})`,
+                protocol: dex.name.toLowerCase(),
+                chain: chainName,
+                chainName: chainConfig.name,
+                inputAmount: amount,
+                outputAmount: marketAdjustedOutput,
+                gasCost: gasCostUSD,
+                gasCostNative: gasCostNative,
+                tradingFee: tradingFee,
+                slippage: slippageCost,
+                totalCost: gasCostUSD + tradingFee + slippageCost,
+                netOutput: Math.max(0, finalOutput),
+                liquidity: "High",
+                estimatedTime: `~${Math.ceil(chainConfig.blockTime * 3 / 60)} mins`,
+                route: ["USDC", coin.symbol],
+                realData: true,
+                marketPrice: marketRate,
+                blockTime: chainConfig.blockTime
+              });
+            }
+          });
+
+          // Add one CEX quote per coin (not chain-specific)
+          if (chainName === 'ethereum') { // Only add CEX quotes once per coin
+            const cexQuotes = [
+              { name: "Binance", tradingFee: 0.001, withdrawalFee: 1.0, spread: 0.0005 },
+              { name: "Coinbase Pro", tradingFee: 0.005, withdrawalFee: 2.5, spread: 0.001 },
+              { name: "Kraken", tradingFee: 0.0025, withdrawalFee: 3.0, spread: 0.0008 }
+            ];
+
+            cexQuotes.forEach(cex => {
+              const tradingFeeAmount = amount * cex.tradingFee;
+              const spreadCost = amount * cex.spread;
+              const usdAfterFees = amount - tradingFeeAmount - spreadCost;
+              const grossOutputEUR = usdAfterFees * currentEurRate;
+              const marketAdjustedOutput = grossOutputEUR * marketRate;
+              const finalOutput = marketAdjustedOutput - cex.withdrawalFee;
+
+              if (finalOutput > 0) {
+                allQuotes.push({
+                  id: `${coin.symbol}-${cex.name.toLowerCase()}-cex`,
+                  stablecoin: coin.symbol,
+                  stablecoinName: coin.name,
+                  type: 'CEX',
+                  name: cex.name,
+                  exchange: `${cex.name} (Multi-chain)`,
+                  protocol: 'centralized',
+                  chain: 'multi-chain',
+                  chainName: 'CEX',
+                  inputAmount: amount,
+                  outputAmount: marketAdjustedOutput,
+                  gasCost: 0,
+                  tradingFee: tradingFeeAmount,
+                  slippage: spreadCost,
+                  totalCost: tradingFeeAmount + spreadCost + cex.withdrawalFee,
+                  netOutput: Math.max(0, finalOutput),
+                  liquidity: "Very High",
+                  estimatedTime: "~10-30 mins",
+                  route: ["USDC", "EUR", coin.symbol],
+                  realData: true,
+                  marketPrice: marketRate
+                });
+              }
             });
           }
-        });
-
-        // CEX quotes with real market rates
-        const cexQuotes = [
-          {
-            name: "Binance",
-            tradingFee: 0.001, // 0.1%
-            withdrawalFee: 1.0,
-            spread: 0.0005
-          },
-          {
-            name: "Coinbase Pro",
-            tradingFee: 0.005, // 0.5%
-            withdrawalFee: 2.5,
-            spread: 0.001
-          },
-          {
-            name: "Kraken",
-            tradingFee: 0.0025, // 0.25%
-            withdrawalFee: 3.0,
-            spread: 0.0008
-          }
-        ];
-
-        cexQuotes.forEach(cex => {
-          const tradingFeeAmount = amount * cex.tradingFee;
-          const spreadCost = amount * cex.spread;
-          const grossOutput = (amount - tradingFeeAmount - spreadCost) * marketRate;
-          const finalOutput = grossOutput - cex.withdrawalFee;
-
-          if (finalOutput > 0) {
-            allQuotes.push({
-              id: `${coin.symbol}-${cex.name.toLowerCase()}`,
-              stablecoin: coin.symbol,
-              stablecoinName: coin.name,
-              type: 'CEX',
-              name: cex.name,
-              exchange: `${cex.name} (Market)`,
-              protocol: 'centralized',
-              inputAmount: amount,
-              outputAmount: grossOutput,
-              gasCost: 0,
-              tradingFee: tradingFeeAmount,
-              slippage: spreadCost,
-              totalCost: tradingFeeAmount + spreadCost + cex.withdrawalFee,
-              netOutput: Math.max(0, finalOutput),
-              liquidity: "Very High",
-              estimatedTime: "~10-30 mins",
-              route: ["USDC", "EUR", coin.symbol],
-              realData: true,
-              marketPrice: marketRate
-            });
-          }
-        });
+        }
       }
 
-      console.log('Generated quotes:', allQuotes.length);
+      console.log('Generated multi-chain quotes:', allQuotes.length);
       return allQuotes.filter(quote => quote.netOutput > 0);
       
     } catch (error) {
-      console.error('Error generating quotes:', error);
-      setError('Failed to fetch market data. Please try again.');
+      console.error('Error generating multi-chain quotes:', error);
+      setError('Failed to fetch multi-chain market data. Please try again.');
       return [];
     } finally {
       setLoading(false);
@@ -662,8 +714,13 @@ const Dashboard = () => {
                                 {quote.stablecoin} via {quote.name}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {quote.type === 'DEX' ? 'Ethereum Chain: ' : 'CEX: '}{Array.isArray(quote.route) ? quote.route.join(' → ') : quote.route}
+                                {quote.chainName}: {Array.isArray(quote.route) ? quote.route.join(' → ') : quote.route}
                               </div>
+                              {quote.gasCostNative && (
+                                <div className="text-xs text-blue-600">
+                                  Gas: {quote.gasCostNative.toFixed(6)} {quote.chain === 'ethereum' ? 'ETH' : quote.chain === 'polygon' ? 'MATIC' : 'xDAI'} (${quote.gasCost.toFixed(2)})
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
