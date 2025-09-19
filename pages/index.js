@@ -1,18 +1,4 @@
-const SortableHeader = ({ sortKey, children }) => (
-    <th 
-      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-      onClick={() => handleSort(sortKey)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        {sortConfig.key === sortKey && (
-          <span className="text-blue-600">
-            {sortConfig.direction === 'desc' ? '↓' : '↑'}
-          </span>
-        )}
-      </div>
-    </th>
-  );import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown, Info, DollarSign, Euro, ExternalLink, AlertTriangle, Building2, Layers } from 'lucide-react';
 
 const Dashboard = () => {
@@ -68,20 +54,13 @@ const Dashboard = () => {
     }
   ];
 
-  const USDC_ADDRESSES = {
-    ethereum: '0xA0b86a33E6417efb22d3e12dd9ffd82b1b4b74c',
-    base: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-    polygon: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174',
-    gnosis: '0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83'
-  };
-
   // Chain-specific configurations
   const chainConfigs = {
     ethereum: {
       name: 'Ethereum',
-      gasPrice: 25, // Gwei
-      nativeTokenPrice: 2400, // ETH price
-      blockTime: 12, // seconds
+      gasPrice: 25,
+      nativeTokenPrice: 2400,
+      blockTime: 12,
       avgGasLimit: 180000,
       dexProtocols: [
         { name: 'Uniswap V3', gasMultiplier: 1.0, feeBase: 0.003, slippageBase: 0.001 },
@@ -91,9 +70,9 @@ const Dashboard = () => {
     },
     base: {
       name: 'Base',
-      gasPrice: 0.001, // Much lower gas on Base
-      nativeTokenPrice: 2400, // ETH price (Base uses ETH)
-      blockTime: 2, // seconds
+      gasPrice: 0.001,
+      nativeTokenPrice: 2400,
+      blockTime: 2,
       avgGasLimit: 150000,
       dexProtocols: [
         { name: 'BaseSwap', gasMultiplier: 1.0, feeBase: 0.0025, slippageBase: 0.0008 },
@@ -103,9 +82,9 @@ const Dashboard = () => {
     },
     polygon: {
       name: 'Polygon',
-      gasPrice: 30, // Gwei (MATIC)
-      nativeTokenPrice: 0.7, // MATIC price
-      blockTime: 2, // seconds
+      gasPrice: 30,
+      nativeTokenPrice: 0.7,
+      blockTime: 2,
       avgGasLimit: 140000,
       dexProtocols: [
         { name: 'QuickSwap', gasMultiplier: 1.0, feeBase: 0.003, slippageBase: 0.0008 },
@@ -115,9 +94,9 @@ const Dashboard = () => {
     },
     gnosis: {
       name: 'Gnosis',
-      gasPrice: 2, // Gwei (xDAI)
-      nativeTokenPrice: 1.0, // xDAI = $1
-      blockTime: 5, // seconds
+      gasPrice: 2,
+      nativeTokenPrice: 1.0,
+      blockTime: 5,
       avgGasLimit: 120000,
       dexProtocols: [
         { name: 'Honeyswap', gasMultiplier: 1.0, feeBase: 0.003, slippageBase: 0.0005 },
@@ -203,7 +182,7 @@ const Dashboard = () => {
           
           // Generate DEX quotes for this chain
           chainConfig.dexProtocols.forEach(dex => {
-            const gasCostNative = (chainConfig.gasPrice * chainConfig.avgGasLimit * dex.gasMultiplier) / 1e18;
+            const gasCostNative = (chainConfig.gasPrice * chainConfig.avgGasLimit * dex.gasMultiplier) / 1e9;
             const gasCostUSD = gasCostNative * chainConfig.nativeTokenPrice;
             const tradingFee = amount * dex.feeBase;
             const slippageCost = amount * dex.slippageBase;
@@ -246,11 +225,10 @@ const Dashboard = () => {
           });
 
           // Add one CEX quote per coin (not chain-specific)
-          if (chainName === 'ethereum') { // Only add CEX quotes once per coin
+          if (chainName === 'ethereum') {
             const cexQuotes = [
               { name: "Binance", tradingFee: 0.001, withdrawalFee: 1.0, spread: 0.0005 },
-              { name: "Coinbase Pro", tradingFee: 0.005, withdrawalFee: 2.5, spread: 0.001 },
-              { name: "Kraken", tradingFee: 0.0025, withdrawalFee: 3.0, spread: 0.0008 }
+              { name: "Coinbase Pro", tradingFee: 0.005, withdrawalFee: 2.5, spread: 0.001 }
             ];
 
             cexQuotes.forEach(cex => {
@@ -347,26 +325,6 @@ const Dashboard = () => {
         description: "European crypto payment gateway"
       },
       { 
-        name: "Banxa", 
-        fee: 1.25, 
-        rate: 0.997, 
-        type: "percentage", 
-        time: "1-4 hours", 
-        cryptoSupport: true,
-        supportedCoins: ["EURC", "EURS", "EURT"],
-        description: "Regulated crypto off-ramp"
-      },
-      { 
-        name: "Transak", 
-        fee: 0.99, 
-        rate: 0.998, 
-        type: "percentage", 
-        time: "20-60 mins", 
-        cryptoSupport: true,
-        supportedCoins: ["EURC", "EURS"],
-        description: "Global crypto gateway"
-      },
-      { 
         name: "Circle (EURC)", 
         fee: 0.0, 
         rate: 1.0, 
@@ -377,14 +335,14 @@ const Dashboard = () => {
         description: "Native EURC redemption"
       },
       { 
-        name: "Mercuryo", 
-        fee: 1.95, 
-        rate: 0.995, 
+        name: "Transak", 
+        fee: 0.99, 
+        rate: 0.998, 
         type: "percentage", 
-        time: "10-30 mins", 
+        time: "20-60 mins", 
         cryptoSupport: true,
-        supportedCoins: ["EURC", "EURS", "EURT"],
-        description: "European crypto payment processor"
+        supportedCoins: ["EURC", "EURS"],
+        description: "Global crypto gateway"
       }
     ];
 
@@ -402,14 +360,6 @@ const Dashboard = () => {
         type: "percentage", 
         time: "2-4 hours", 
         description: "Swap to major crypto + traditional off-ramp"
-      },
-      { 
-        name: "DEX → Coinbase", 
-        fee: 3.0, 
-        rate: 0.993, 
-        type: "percentage", 
-        time: "1-3 days", 
-        description: "Swap to major crypto + CEX withdrawal"
       }
     ] : [];
 
@@ -503,30 +453,11 @@ const Dashboard = () => {
           aValue = a.name;
           bValue = b.name;
           break;
-        case 'chain':
-          aValue = a.chainName || 'CEX';
-          bValue = b.chainName || 'CEX';
-          break;
-        case 'type':
-          aValue = a.type;
-          bValue = b.type;
-          break;
         case 'totalCost':
           const aOfframp = generateOfframpOptions(a.stablecoin, a.netOutput)[0];
           const bOfframp = generateOfframpOptions(b.stablecoin, b.netOutput)[0];
           aValue = a.totalCost + (aOfframp?.feeAmount || 0);
           bValue = b.totalCost + (bOfframp?.feeAmount || 0);
-          break;
-        case 'time':
-          aValue = a.estimatedTime;
-          bValue = b.estimatedTime;
-          break;
-        case 'perfectDiff':
-          const theoreticalPerfect = getTheoreticalPerfectOutput();
-          const aFinal = a.finalAmount || generateOfframpOptions(a.stablecoin, a.netOutput)[0]?.finalAmount || 0;
-          const bFinal = b.finalAmount || generateOfframpOptions(b.stablecoin, b.netOutput)[0]?.finalAmount || 0;
-          aValue = theoreticalPerfect - aFinal;
-          bValue = theoreticalPerfect - bFinal;
           break;
         default:
           aValue = 0;
@@ -593,6 +524,22 @@ const Dashboard = () => {
       setTradeAmount(value);
     }
   };
+
+  const SortableHeader = ({ sortKey, children }) => (
+    <th 
+      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+      onClick={() => handleSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortConfig.key === sortKey && (
+          <span className="text-blue-600">
+            {sortConfig.direction === 'desc' ? '↓' : '↑'}
+          </span>
+        )}
+      </div>
+    </th>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
@@ -821,10 +768,12 @@ const Dashboard = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
+                          <div className="text-sm text-gray-900" title={`Trading fees: ${quote.tradingFee?.toFixed(2) || 0}, Gas: ${quote.gasCost?.toFixed(2) || 0}, Slippage: ${quote.slippage?.toFixed(2) || 0}, Off-ramp: €${bestOfframp?.feeAmount?.toFixed(2) || 0}`}>
                             {formatCurrency(quote.totalCost + (bestOfframp?.feeAmount || 0))}
                           </div>
-                          <div className="text-xs text-gray-500">Trading + off-ramp</div>
+                          <div className="text-xs text-gray-500">
+                            Trading + off-ramp
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-red-600">
@@ -833,19 +782,6 @@ const Dashboard = () => {
                           <div className="text-xs text-red-500">
                             {(((theoreticalPerfect - (bestOfframp?.finalAmount || 0)) / theoreticalPerfect) * 100).toFixed(2)}% cost
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {quote.realData ? (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              <span className="text-xs text-green-600 font-medium">REAL</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
-                              <span className="text-xs text-gray-500">MOCK</span>
-                            </div>
-                          )}
                         </td>
                       </tr>
                     );
@@ -856,58 +792,70 @@ const Dashboard = () => {
           </div>
         )}
 
-          <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Info className="w-5 h-5 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800">Complete Conversion Path</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-700 mb-2">Full Process: USDC → Euro Stablecoin → EUR in Bank</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <h5 className="font-medium text-blue-600 mb-1">Step 1: DEX/CEX Trading</h5>
-                    <p className="text-gray-600">Convert USDC to Euro stablecoin (EURC, EURS, EURT)</p>
-                    <p className="text-xs text-gray-500 mt-1">Costs: Trading fees, gas, slippage</p>
-                  </div>
-                  <div>
-                    <h5 className="font-medium text-blue-600 mb-1">Step 2: Off-Ramp Selection</h5>
-                    <p className="text-gray-600">Best method to convert stablecoin to EUR</p>
-                    <p className="text-xs text-gray-500 mt-1">Options: Revolut, Wise, Coinbase, Kraken, SEPA</p>
-                  </div>
-                  <div>
-                    <h5 className="font-medium text-blue-600 mb-1">Step 3: Bank Transfer</h5>
-                    <p className="text-gray-600">Final EUR amount in your bank account</p>
-                    <p className="text-xs text-gray-500 mt-1">Time: Instant to 3 days depending on method</p>
-                  </div>
+        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Info className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-800">Blockchain Networks & Chains</h3>
+          </div>
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium text-gray-700 mb-2">Multi-Chain Support</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <h5 className="font-medium text-blue-600 mb-1">Ethereum Mainnet</h5>
+                  <p className="text-gray-600">Highest liquidity, higher gas costs</p>
+                  <p className="text-xs text-gray-500 mt-1">Gas: ~$5-15 per trade</p>
+                </div>
+                <div>
+                  <h5 className="font-medium text-green-600 mb-1">Base (L2)</h5>
+                  <p className="text-gray-600">Low costs, good EURC support</p>
+                  <p className="text-xs text-gray-500 mt-1">Gas: ~$0.01-0.05 per trade</p>
+                </div>
+                <div>
+                  <h5 className="font-medium text-purple-600 mb-1">Polygon</h5>
+                  <p className="text-gray-600">Very low costs, good coverage</p>
+                  <p className="text-xs text-gray-500 mt-1">Gas: ~$0.01-0.10 per trade</p>
+                </div>
+                <div>
+                  <h5 className="font-medium text-orange-600 mb-1">Gnosis Chain</h5>
+                  <p className="text-gray-600">Euro-focused, EURe native</p>
+                  <p className="text-xs text-gray-500 mt-1">Gas: ~$0.01 per trade</p>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-2">Euro Stablecoin Off-Ramps</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>• <strong>Monerium:</strong> 0% fee for EURe, instant, 1:1 redemption</li>
-                    <li>• <strong>Circle:</strong> 0% fee for EURC, instant, native redemption</li>
-                    <li>• <strong>Ramp Network:</strong> 0.75% fee, 15-30 mins, EU regulated</li>
-                    <li>• <strong>Transak:</strong> 0.99% fee, 20-60 mins, global gateway</li>
-                    <li>• <strong>Mt Pelerin:</strong> 1.0% fee, 1-2 hours, Swiss regulated</li>
-                    <li>• <strong>MoonPay:</strong> 1.5% fee, 30 mins, supports most coins</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-700 mb-2">Stablecoin-Specific Benefits</h4>
-                  <ul className="space-y-1 text-gray-600">
-                    <li>• <strong>EURe:</strong> Direct 1:1 redemption via Monerium</li>
-                    <li>• <strong>EURC:</strong> Native Circle redemption, widest support</li>
-                    <li>• <strong>EURS:</strong> Good gateway support, established</li>
-                    <li>• <strong>EURT:</strong> Tether backing, multiple off-ramps</li>
-                    <li>• Each coin automatically selects best compatible off-ramp</li>
-                  </ul>
-                </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div>
+                <h4 className="font-medium text-gray-700 mb-2">Euro Stablecoin Off-Ramps</h4>
+                <ul className="space-y-1 text-gray-600">
+                  <li>• <strong>Monerium:</strong> 0% fee for EURe, instant, 1:1 redemption</li>
+                  <li>• <strong>Circle:</strong> 0% fee for EURC, instant, native redemption</li>
+                  <li>• <strong>Ramp Network:</strong> 0.75% fee, 15-30 mins, EU regulated</li>
+                  <li>• <strong>Transak:</strong> 0.99% fee, 20-60 mins, global gateway</li>
+                  <li>• <strong>Mt Pelerin:</strong> 1.0% fee, 1-2 hours, Swiss regulated</li>
+                  <li>• <strong>MoonPay:</strong> 1.5% fee, 30 mins, supports most coins</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-medium text-gray-700 mb-2">Stablecoin-Specific Benefits</h4>
+                <ul className="space-y-1 text-gray-600">
+                  <li>• <strong>EURe:</strong> Direct 1:1 redemption via Monerium</li>
+                  <li>• <strong>EURC:</strong> Native Circle redemption, widest support</li>
+                  <li>• <strong>EURS:</strong> Good gateway support, established</li>
+                  <li>• <strong>EURT:</strong> Tether backing, multiple off-ramps</li>
+                  <li>• Each coin automatically selects best compatible off-ramp</li>
+                </ul>
               </div>
             </div>
           </div>
+          
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800">
+              <strong>Conversion Logic:</strong> ${tradeAmount.toLocaleString()} USDC × €{eurUsdRate?.toFixed(4)} rate = €{(tradeAmount * (eurUsdRate || 0)).toFixed(2)} theoretical maximum. 
+              Actual quotes include trading fees, gas costs, slippage, and off-ramp fees.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
