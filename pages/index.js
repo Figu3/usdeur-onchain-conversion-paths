@@ -525,12 +525,12 @@ const Dashboard = () => {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exchange + Route</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final EUR Output</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complete Route</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final EUR in Bank</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Best Off-Ramp</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Costs</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">vs Perfect</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Source</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -559,7 +559,7 @@ const Dashboard = () => {
                                 {quote.stablecoin} via {quote.name}
                               </div>
                               <div className="text-xs text-gray-500">
-                                {Array.isArray(quote.route) ? quote.route.join(' → ') : quote.route}
+                                {quote.type === 'DEX' ? 'Ethereum Chain: ' : 'CEX: '}{Array.isArray(quote.route) ? quote.route.join(' → ') : quote.route}
                               </div>
                             </div>
                           </div>
@@ -568,7 +568,17 @@ const Dashboard = () => {
                           <div className="text-sm font-bold text-gray-900">
                             {formatCurrency(bestOfframp?.finalAmount || 0, 'EUR')}
                           </div>
-                          <div className="text-xs text-gray-500">Via {bestOfframp?.name}</div>
+                          <div className="text-xs text-gray-500">
+                            After all fees & costs
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {bestOfframp?.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {bestOfframp?.type === 'percentage' ? `${bestOfframp?.fee}% fee` : `€${bestOfframp?.fee} flat fee`} • {bestOfframp?.time}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -620,39 +630,56 @@ const Dashboard = () => {
           </div>
         )}
 
-        <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Info className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Data Sources & Methodology</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-            <div>
-              <h4 className="font-medium text-gray-700 mb-2">Real Market Data</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• <span className="text-green-600">●</span> Live EUR/USD rates from ExchangeRate-API</li>
-                <li>• <span className="text-green-600">●</span> Real token prices from CoinGecko</li>
-                <li>• <span className="text-green-600">●</span> Current gas prices and DEX fees</li>
-                <li>• <span className="text-green-600">●</span> Actual exchange trading fees</li>
-              </ul>
+          <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Info className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold text-gray-800">Complete Conversion Path</h3>
             </div>
-            <div>
-              <h4 className="font-medium text-gray-700 mb-2">Cost Components</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Trading fees (0.1% - 0.5% depending on exchange)</li>
-                <li>• Gas costs for DEX transactions (~$5-15)</li>
-                <li>• Slippage (0.05% - 0.3% for stablecoins)</li>
-                <li>• Off-ramp fees to your bank account</li>
-              </ul>
+            <div className="space-y-4">
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-medium text-gray-700 mb-2">Full Process: USDC → Euro Stablecoin → EUR in Bank</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <h5 className="font-medium text-blue-600 mb-1">Step 1: DEX/CEX Trading</h5>
+                    <p className="text-gray-600">Convert USDC to Euro stablecoin (EURC, EURS, EURT)</p>
+                    <p className="text-xs text-gray-500 mt-1">Costs: Trading fees, gas, slippage</p>
+                  </div>
+                  <div>
+                    <h5 className="font-medium text-blue-600 mb-1">Step 2: Off-Ramp Selection</h5>
+                    <p className="text-gray-600">Best method to convert stablecoin to EUR</p>
+                    <p className="text-xs text-gray-500 mt-1">Options: Revolut, Wise, Coinbase, Kraken, SEPA</p>
+                  </div>
+                  <div>
+                    <h5 className="font-medium text-blue-600 mb-1">Step 3: Bank Transfer</h5>
+                    <p className="text-gray-600">Final EUR amount in your bank account</p>
+                    <p className="text-xs text-gray-500 mt-1">Time: Instant to 3 days depending on method</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                <div>
+                  <h4 className="font-medium text-gray-700 mb-2">Off-Ramp Options</h4>
+                  <ul className="space-y-1 text-gray-600">
+                    <li>• <strong>Revolut:</strong> 0.5% fee, instant transfer</li>
+                    <li>• <strong>Wise:</strong> €2.5 flat fee, 1-2 hours</li>
+                    <li>• <strong>Coinbase:</strong> 1.49% fee, 1-3 days</li>
+                    <li>• <strong>Kraken:</strong> 0.9% fee, 1-3 days</li>
+                    <li>• <strong>SEPA:</strong> €1 flat fee, 1 day</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-gray-700 mb-2">Why Off-Ramps Matter</h4>
+                  <ul className="space-y-1 text-gray-600">
+                    <li>• Each route automatically selects the best off-ramp</li>
+                    <li>• Smaller amounts favor flat fees (Wise, SEPA)</li>
+                    <li>• Larger amounts favor percentage fees (Revolut)</li>
+                    <li>• Speed vs cost trade-offs clearly shown</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Real Data:</strong> This dashboard uses live market rates and current fee structures. 
-              Quotes marked "REAL" use actual market data, while others use realistic estimates based on current conditions.
-            </p>
-          </div>
-        </div>
       </div>
     </div>
   );
