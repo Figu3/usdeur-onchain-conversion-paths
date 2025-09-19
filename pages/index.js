@@ -238,15 +238,118 @@ const Dashboard = () => {
   };
 
   const generateOfframpOptions = (stablecoin, amount) => {
+    // Real Euro stablecoin off-ramp providers
     const offrampProviders = [
-      { name: "Revolut", fee: 0.5, rate: 0.999, type: "percentage", time: "Instant" },
-      { name: "Wise", fee: 2.5, rate: 0.9985, type: "flat", time: "1-2 hours" },
-      { name: "Coinbase", fee: 1.49, rate: 0.998, type: "percentage", time: "1-3 days" },
-      { name: "Kraken", fee: 0.9, rate: 0.9975, type: "percentage", time: "1-3 days" },
-      { name: "SEPA Transfer", fee: 1.0, rate: 0.999, type: "flat", time: "1 day" }
+      { 
+        name: "Monerium", 
+        fee: 0.0, 
+        rate: 1.0, 
+        type: "flat", 
+        time: "Instant", 
+        cryptoSupport: true,
+        supportedCoins: ["EURe"],
+        description: "Direct 1:1 redemption for EURe"
+      },
+      { 
+        name: "Mt Pelerin", 
+        fee: 1.0, 
+        rate: 0.999, 
+        type: "percentage", 
+        time: "1-2 hours", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC", "EURS", "EURT", "EURe"],
+        description: "Swiss regulated crypto off-ramp"
+      },
+      { 
+        name: "MoonPay", 
+        fee: 1.5, 
+        rate: 0.998, 
+        type: "percentage", 
+        time: "30 mins", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC", "EURS", "EURT"],
+        description: "Global crypto off-ramp service"
+      },
+      { 
+        name: "Ramp Network", 
+        fee: 0.75, 
+        rate: 0.9985, 
+        type: "percentage", 
+        time: "15-30 mins", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC", "EURS"],
+        description: "European crypto payment gateway"
+      },
+      { 
+        name: "Banxa", 
+        fee: 1.25, 
+        rate: 0.997, 
+        type: "percentage", 
+        time: "1-4 hours", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC", "EURS", "EURT"],
+        description: "Regulated crypto off-ramp"
+      },
+      { 
+        name: "Transak", 
+        fee: 0.99, 
+        rate: 0.998, 
+        type: "percentage", 
+        time: "20-60 mins", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC", "EURS"],
+        description: "Global crypto gateway"
+      },
+      { 
+        name: "Circle (EURC)", 
+        fee: 0.0, 
+        rate: 1.0, 
+        type: "flat", 
+        time: "Instant", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC"],
+        description: "Native EURC redemption"
+      },
+      { 
+        name: "Mercuryo", 
+        fee: 1.95, 
+        rate: 0.995, 
+        type: "percentage", 
+        time: "10-30 mins", 
+        cryptoSupport: true,
+        supportedCoins: ["EURC", "EURS", "EURT"],
+        description: "European crypto payment processor"
+      }
     ];
 
-    return offrampProviders.map(provider => {
+    // Filter providers that support this specific stablecoin
+    const compatibleProviders = offrampProviders.filter(provider => 
+      provider.supportedCoins.includes(stablecoin)
+    );
+
+    // If no specific providers, use general crypto off-ramps with higher fees
+    const fallbackProviders = compatibleProviders.length === 0 ? [
+      { 
+        name: "DEX → Revolut", 
+        fee: 2.5, 
+        rate: 0.995, 
+        type: "percentage", 
+        time: "2-4 hours", 
+        description: "Swap to major crypto + traditional off-ramp"
+      },
+      { 
+        name: "DEX → Coinbase", 
+        fee: 3.0, 
+        rate: 0.993, 
+        type: "percentage", 
+        time: "1-3 days", 
+        description: "Swap to major crypto + CEX withdrawal"
+      }
+    ] : [];
+
+    const providersToUse = compatibleProviders.length > 0 ? compatibleProviders : fallbackProviders;
+
+    return providersToUse.map(provider => {
       const feeAmount = provider.type === "percentage" 
         ? amount * (provider.fee / 100) 
         : provider.fee;
@@ -579,6 +682,9 @@ const Dashboard = () => {
                           <div className="text-xs text-gray-500">
                             {bestOfframp?.type === 'percentage' ? `${bestOfframp?.fee}% fee` : `€${bestOfframp?.fee} flat fee`} • {bestOfframp?.time}
                           </div>
+                          <div className="text-xs text-blue-600 mt-1">
+                            {bestOfframp?.description}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -659,22 +765,24 @@ const Dashboard = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
                 <div>
-                  <h4 className="font-medium text-gray-700 mb-2">Off-Ramp Options</h4>
+                  <h4 className="font-medium text-gray-700 mb-2">Euro Stablecoin Off-Ramps</h4>
                   <ul className="space-y-1 text-gray-600">
-                    <li>• <strong>Revolut:</strong> 0.5% fee, instant transfer</li>
-                    <li>• <strong>Wise:</strong> €2.5 flat fee, 1-2 hours</li>
-                    <li>• <strong>Coinbase:</strong> 1.49% fee, 1-3 days</li>
-                    <li>• <strong>Kraken:</strong> 0.9% fee, 1-3 days</li>
-                    <li>• <strong>SEPA:</strong> €1 flat fee, 1 day</li>
+                    <li>• <strong>Monerium:</strong> 0% fee for EURe, instant, 1:1 redemption</li>
+                    <li>• <strong>Circle:</strong> 0% fee for EURC, instant, native redemption</li>
+                    <li>• <strong>Ramp Network:</strong> 0.75% fee, 15-30 mins, EU regulated</li>
+                    <li>• <strong>Transak:</strong> 0.99% fee, 20-60 mins, global gateway</li>
+                    <li>• <strong>Mt Pelerin:</strong> 1.0% fee, 1-2 hours, Swiss regulated</li>
+                    <li>• <strong>MoonPay:</strong> 1.5% fee, 30 mins, supports most coins</li>
                   </ul>
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-700 mb-2">Why Off-Ramps Matter</h4>
+                  <h4 className="font-medium text-gray-700 mb-2">Stablecoin-Specific Benefits</h4>
                   <ul className="space-y-1 text-gray-600">
-                    <li>• Each route automatically selects the best off-ramp</li>
-                    <li>• Smaller amounts favor flat fees (Wise, SEPA)</li>
-                    <li>• Larger amounts favor percentage fees (Revolut)</li>
-                    <li>• Speed vs cost trade-offs clearly shown</li>
+                    <li>• <strong>EURe:</strong> Direct 1:1 redemption via Monerium</li>
+                    <li>• <strong>EURC:</strong> Native Circle redemption, widest support</li>
+                    <li>• <strong>EURS:</strong> Good gateway support, established</li>
+                    <li>• <strong>EURT:</strong> Tether backing, multiple off-ramps</li>
+                    <li>• Each coin automatically selects best compatible off-ramp</li>
                   </ul>
                 </div>
               </div>
