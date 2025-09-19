@@ -1,4 +1,18 @@
-import React, { useState, useEffect } from 'react';
+const SortableHeader = ({ sortKey, children }) => (
+    <th 
+      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+      onClick={() => handleSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortConfig.key === sortKey && (
+          <span className="text-blue-600">
+            {sortConfig.direction === 'desc' ? '↓' : '↑'}
+          </span>
+        )}
+      </div>
+    </th>
+  );import React, { useState, useEffect } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown, Info, DollarSign, Euro, ExternalLink, AlertTriangle, Building2, Layers } from 'lucide-react';
 
 const Dashboard = () => {
@@ -7,7 +21,7 @@ const Dashboard = () => {
   const [tradeAmount, setTradeAmount] = useState(1000);
   const [allQuotes, setAllQuotes] = useState([]);
   const [error, setError] = useState(null);
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortConfig, setSortConfig] = useState({ key: 'finalAmount', direction: 'desc' });
   const [showAllQuotes, setShowAllQuotes] = useState(false);
   const [eurUsdRate, setEurUsdRate] = useState(null);
   const [priceLoading, setPriceLoading] = useState(false);
@@ -447,6 +461,14 @@ const Dashboard = () => {
     }
   }, [tradeAmount, eurUsdRate]);
 
+  const handleSort = (key) => {
+    let direction = 'desc';
+    if (sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   const getSortedQuotes = () => {
     const quotesToShow = showAllQuotes ? allQuotes : (() => {
       const bestQuotesByStablecoin = {};
@@ -466,10 +488,56 @@ const Dashboard = () => {
     })();
 
     return quotesToShow.sort((a, b) => {
-      const aFinalAmount = a.finalAmount || generateOfframpOptions(a.stablecoin, a.netOutput)[0]?.finalAmount || 0;
-      const bFinalAmount = b.finalAmount || generateOfframpOptions(b.stablecoin, b.netOutput)[0]?.finalAmount || 0;
+      let aValue, bValue;
       
-      return sortOrder === 'desc' ? bFinalAmount - aFinalAmount : aFinalAmount - bFinalAmount;
+      switch (sortConfig.key) {
+        case 'finalAmount':
+          aValue = a.finalAmount || generateOfframpOptions(a.stablecoin, a.netOutput)[0]?.finalAmount || 0;
+          bValue = b.finalAmount || generateOfframpOptions(b.stablecoin, b.netOutput)[0]?.finalAmount || 0;
+          break;
+        case 'stablecoin':
+          aValue = a.stablecoin;
+          bValue = b.stablecoin;
+          break;
+        case 'exchange':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        case 'chain':
+          aValue = a.chainName || 'CEX';
+          bValue = b.chainName || 'CEX';
+          break;
+        case 'type':
+          aValue = a.type;
+          bValue = b.type;
+          break;
+        case 'totalCost':
+          const aOfframp = generateOfframpOptions(a.stablecoin, a.netOutput)[0];
+          const bOfframp = generateOfframpOptions(b.stablecoin, b.netOutput)[0];
+          aValue = a.totalCost + (aOfframp?.feeAmount || 0);
+          bValue = b.totalCost + (bOfframp?.feeAmount || 0);
+          break;
+        case 'time':
+          aValue = a.estimatedTime;
+          bValue = b.estimatedTime;
+          break;
+        case 'perfectDiff':
+          const theoreticalPerfect = getTheoreticalPerfectOutput();
+          const aFinal = a.finalAmount || generateOfframpOptions(a.stablecoin, a.netOutput)[0]?.finalAmount || 0;
+          const bFinal = b.finalAmount || generateOfframpOptions(b.stablecoin, b.netOutput)[0]?.finalAmount || 0;
+          aValue = theoreticalPerfect - aFinal;
+          bValue = theoreticalPerfect - bFinal;
+          break;
+        default:
+          aValue = 0;
+          bValue = 0;
+      }
+
+      if (typeof aValue === 'string') {
+        return sortConfig.direction === 'desc' ? bValue.localeCompare(aValue) : aValue.localeCompare(bValue);
+      }
+      
+      return sortConfig.direction === 'desc' ? bValue - aValue : aValue - bValue;
     });
   };
 
@@ -618,7 +686,7 @@ const Dashboard = () => {
               <div className="bg-red-50 rounded-lg p-4 border border-red-200">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingDown className="w-5 h-5 text-red-600" />
-                  <h3 className="font-semibold text-red-800">Total Trading Cost</h3>
+                  <h3 className="font-semibold text-red-800">Optimal Trading Cost</h3>
                 </div>
                 <p className="text-2xl font-bold text-red-600">
                   -{formatCurrency(quoteDifference.difference, 'EUR')}
@@ -663,14 +731,9 @@ const Dashboard = () => {
                       Show all quotes
                     </label>
                   </div>
-                  <select
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value)}
-                    className="px-3 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="desc">Best to Worst</option>
-                    <option value="asc">Worst to Best</option>
-                  </select>
+                  <div className="text-sm text-gray-600">
+                    Click column headers to sort
+                  </div>
                 </div>
               </div>
             </div>
@@ -679,19 +742,19 @@ const Dashboard = () => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rank</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complete Route</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final EUR in Bank</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Best Off-Ramp</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Costs</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">vs Perfect</th>
+                    <SortableHeader sortKey="rank">Rank</SortableHeader>
+                    <SortableHeader sortKey="stablecoin">Complete Route</SortableHeader>
+                    <SortableHeader sortKey="finalAmount">Final EUR in Bank</SortableHeader>
+                    <SortableHeader sortKey="exchange">Best Off-Ramp</SortableHeader>
+                    <SortableHeader sortKey="type">Type</SortableHeader>
+                    <SortableHeader sortKey="totalCost">Total Costs</SortableHeader>
+                    <SortableHeader sortKey="perfectDiff">vs Perfect</SortableHeader>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {sortedQuotes.map((quote, index) => {
                     const bestOfframp = generateOfframpOptions(quote.stablecoin, quote.netOutput)[0];
-                    const isTopQuote = index === 0 && sortOrder === 'desc';
+                    const isTopQuote = index === 0 && sortConfig.key === 'finalAmount' && sortConfig.direction === 'desc';
                     
                     return (
                       <tr key={quote.id} className={`${isTopQuote ? 'bg-green-50 border-l-4 border-l-green-500' : 'hover:bg-gray-50'}`}>
