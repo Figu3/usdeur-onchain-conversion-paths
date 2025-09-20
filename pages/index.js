@@ -200,11 +200,13 @@ const Dashboard = () => {
         { 
           name: 'CoW Protocol', 
           gasMultiplier: 0.8, 
-          feeBase: 0.0002, 
+          feeBase: 0.0001, 
           slippageBase: 0.0001, 
-          description: 'MEV-protected, batch auctions',
+          description: 'Intent-based trading with MEV protection',
           routePath: ['USDC', 'EURe'],
-          specialRate: 1.002 // CoW Protocol often gets better rates
+          specialRate: 1.002,
+          executionType: 'Intent-based batch auction',
+          underlyingMechanism: 'Solver network finds best execution'
         },
         { 
           name: 'Honeyswap', 
@@ -229,10 +231,12 @@ const Dashboard = () => {
           gasMultiplier: 0.9, 
           feeBase: 0.0001, 
           slippageBase: 0.0001, 
-          description: 'Best Gnosis routes',
+          description: 'Meta-aggregator across all DEXs',
           routePath: ['USDC', 'EURe'],
-          underlyingDex: 'CoW Protocol (via DeFiLlama)',
-          specialRate: 1.003 // Even better through aggregation
+          underlyingDex: 'Best available DEX (auto-selected)',
+          specialRate: 1.001,
+          executionType: 'Aggregated routing',
+          underlyingMechanism: 'Routes through CoW Protocol or best DEX'
         }
       ]
     }
@@ -326,13 +330,30 @@ const Dashboard = () => {
             
             // DeFiLlama often finds the absolute best rates
             if (protocol.name === 'DeFiLlama Swap') {
-              rateMultiplier = Math.min(1.005, 1.0 + (amount / 100000) * 0.001); // Better rates for larger amounts
+              rateMultiplier = Math.min(1.002, 1.0 + (amount / 1000000) * 0.0005);
             }
             
-            // Calculate output with proper routing
-            const grossOutputEUR = amount * currentEurRate * rateMultiplier;
-            const marketAdjustedOutput = grossOutputEUR * marketRate;
-            const afterTradingFees = marketAdjustedOutput - (tradingFee * currentEurRate);
+            // CoW Protocol gets excellent rates through batch auctions and MEV protection
+            if (protocol.name === 'CoW Protocol') {
+              rateMultiplier = 1.0 + Math.min(0.003, (amount / 100000) * 0.001);
+            }
+            
+            // Calculate realistic output - use EUR rate directly for EUR stablecoins
+            const targetCoin = coin.symbol;
+            let grossOutputEUR;
+            
+            if (targetCoin === 'EURe' && chainName === 'gnosis') {
+              // EURe on Gnosis: nearly 1:1 conversion due to native support
+              grossOutputEUR = amount * currentEurRate * rateMultiplier;
+            } else if (targetCoin === 'EURC') {
+              // EURC: Circle's EUR stablecoin, very close to 1:1
+              grossOutputEUR = amount * currentEurRate * rateMultiplier;
+            } else {
+              // Other EUR stablecoins
+              grossOutputEUR = amount * currentEurRate * marketRate * rateMultiplier;
+            }
+            
+            const afterTradingFees = grossOutputEUR - (tradingFee * currentEurRate);
             const afterSlippage = afterTradingFees - (slippageCost * currentEurRate);
             const gasCostEUR = gasCostUSD * currentEurRate;
             const finalOutput = afterSlippage - gasCostEUR;
@@ -349,7 +370,7 @@ const Dashboard = () => {
                 chain: chainName,
                 chainName: chainConfig.name,
                 inputAmount: amount,
-                outputAmount: marketAdjustedOutput,
+                outputAmount: grossOutputEUR,
                 gasCost: gasCostUSD,
                 gasCostNative: gasCostNative,
                 tradingFee: tradingFee,
@@ -364,10 +385,14 @@ const Dashboard = () => {
                 blockTime: chainConfig.blockTime,
                 description: protocol.description,
                 underlyingDex: protocol.underlyingDex,
+                executionType: protocol.executionType,
+                underlyingMechanism: protocol.underlyingMechanism,
                 hasArbitrage: rateMultiplier > 1.0,
-                routingPath: protocol.underlyingDex ? 
-                  `${protocol.routePath.join(' → ')} (${protocol.underlyingDex})` : 
-                  protocol.routePath.join(' → ')
+                routingPath: protocol.executionType ? 
+                  `${protocol.routePath.join(' → ')} (${protocol.executionType})` :
+                  protocol.underlyingDex ? 
+                    `${protocol.routePath.join(' → ')} (${protocol.underlyingDex})` : 
+                    protocol.routePath.join(' → ')
               });
             }
           });
@@ -965,27 +990,22 @@ const Dashboard = () => {
           </div>
           <div className="space-y-4">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-700 mb-2">Multi-Chain Support</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              <h4 className="font-medium text-gray-700 mb-2">Execution Types</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <h5 className="font-medium text-blue-600 mb-1">Ethereum Mainnet</h5>
-                  <p className="text-gray-600">Highest liquidity, higher gas costs</p>
-                  <p className="text-xs text-gray-500 mt-1">Gas: ~$5-15 per trade</p>
+                  <h5 className="font-medium text-purple-600 mb-1">Direct DEX</h5>
+                  <p className="text-gray-600">Trade directly on AMM pools</p>
+                  <p className="text-xs text-gray-500 mt-1">Example: Uniswap V3 USDC/EURC pool</p>
                 </div>
                 <div>
-                  <h5 className="font-medium text-green-600 mb-1">Base (L2)</h5>
-                  <p className="text-gray-600">Low costs, good EURC support</p>
-                  <p className="text-xs text-gray-500 mt-1">Gas: ~$0.01-0.05 per trade</p>
+                  <h5 className="font-medium text-green-600 mb-1">Aggregators</h5>
+                  <p className="text-gray-600">Smart routing across multiple DEXs</p>
+                  <p className="text-xs text-gray-500 mt-1">Example: DeFiLlama finds best Uniswap route</p>
                 </div>
                 <div>
-                  <h5 className="font-medium text-purple-600 mb-1">Polygon</h5>
-                  <p className="text-gray-600">Very low costs, good coverage</p>
-                  <p className="text-xs text-gray-500 mt-1">Gas: ~$0.01-0.10 per trade</p>
-                </div>
-                <div>
-                  <h5 className="font-medium text-orange-600 mb-1">Gnosis Chain</h5>
-                  <p className="text-gray-600">Euro-focused, EURe native</p>
-                  <p className="text-xs text-gray-500 mt-1">Gas: ~$0.01 per trade</p>
+                  <h5 className="font-medium text-blue-600 mb-1">Intent-based</h5>
+                  <p className="text-gray-600">Solvers compete for best execution</p>
+                  <p className="text-xs text-gray-500 mt-1">Example: CoW Protocol batch auctions</p>
                 </div>
               </div>
             </div>
