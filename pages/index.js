@@ -1,4 +1,147 @@
-// Fixed version of your dashboard without problematic imports
+<div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route & Protocol</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final EUR in Bank</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Off-ramp Details</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Costs</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Network & Features</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slippage Analysis</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedQuotes.map((quote, index) => {
+                    const isTopQuote = index === 0;
+                    
+                    const getSlippageDisplay = (quote) => {
+                      if (quote.hasImprovement) {
+                        return {
+                          text: `+${(quote.improvement * 100).toFixed(2)}%`,
+                          subtext: 'Price improvement',
+                          className: 'text-emerald-700 bg-emerald-100 border-emerald-300',
+                          icon: '🎉'
+                        };
+                      } else {
+                        const colors = {
+                          'excellent': 'text-green-700 bg-green-100 border-green-300',
+                          'good': 'text-blue-700 bg-blue-100 border-blue-300',
+                          'moderate': 'text-yellow-700 bg-yellow-100 border-yellow-300',
+                          'high': 'text-red-700 bg-red-100 border-red-300'
+                        };
+                        return {
+                          text: `${(quote.slippage * 100).toFixed(2)}%`,
+                          subtext: quote.slippageWarning.message,
+                          className: colors[quote.slippageWarning.level] || colors.moderate,
+                          icon: quote.slippageWarning.icon || '📊'
+                        };
+                      }
+                    };
+
+                    const slippageDisplay = getSlippageDisplay(quote);
+                    
+                    return (
+                      <tr 
+                        key={quote.id}
+                        className={`${isTopQuote ? 'bg-green-50 border-l-4 border-l-green-500' : 'hover:bg-gray-50'} ${
+                          quote.hasImprovement ? 'bg-emerald-50' : ''
+                        }`}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
+                              isTopQuote ? 'bg-green-100 text-green-800' : 
+                              quote.hasImprovement ? 'bg-emerald-100 text-emerald-800' :
+                              'bg-gray-100 text-gray-600'
+                            }`}>
+                              {quote.hasImprovement ? '🏆' : index + 1}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-sm font-medium text-gray-900">{quote.stablecoin}</span>
+                                <span className="text-xs text-gray-500">via {quote.name}</span>
+                              </div>
+                              <EnhancedProtocolBadge quote={quote} />
+                              <div className="text-xs text-gray-500 mt-1">
+                                {quote.route.join(' → ')}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-lg font-bold text-gray-900">
+                            {formatCurrency(quote.finalEurAmount, 'EUR')}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Final amount in your bank
+                          </div>
+                          {quote.hasImprovement && (
+                            <div className="text-xs text-emerald-600 font-medium">
+                              +{formatCurrency(quote.improvement * quote.grossOutput, 'EUR')} bonus
+                            </div>
+                          )}
+                        </td>
+                        
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium text-gray-900">
+                              {quote.offrampMethod}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Fee: {quote.bestOfframp.type === 'percentage' ? 
+                                `${quote.bestOfframp.fee}%` : 
+                                `€${quote.bestOfframp.fee}`}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Effective rate: {(quote.bestOfframp.effectiveRate * 100).toFixed(2)}%
+                            </div>
+                            {quote.offrampOptions.length > 1 && (
+                              <div className="text-xs text-blue-600">
+                                {quote.offrampOptions.length - 1} other option{quote.offrampOptions.length > 2 ? 's' : ''}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="space-y-1">
+                            <div className="text-sm text-gray-900">
+                              {formatCurrency(quote.totalCostBreakdown.total)}
+                            </div>
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div>Trading: {formatCurrency(quote.totalCostBreakdown.trading)}</div>
+                              <div>Off-ramp: {formatCurrency(quote.totalCostBreakdown.offramp)}</div>
+                              <div className="text-red-500">
+                                vs Perfect: -{formatCurrency(theoreticalPerfect - quote.finalEurAmount, 'EUR')}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <Network className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm capitalize font-medium">{quote.network}</span>
+                            </div>
+                            
+                            <div className="text-xs text-gray-600">
+                              Gas: {quote.gasCost > 0 ? formatCurrency(quote.gasCost) : 'Gasless'}
+                            </div>
+                            
+                            <div className="text-xs text-gray-600">
+                              Time: {quote.estimatedTime}
+                            </div>
+                            
+                            {quote.poolType && (
+                              <div className="text-xs text-purple-600">
+                                {quote.poolType} pool
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center gap-1 text-xs">
+                              {quote.// Fixed version of your dashboard without problematic imports
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, TrendingUp, TrendingDown, Info, DollarSign, Euro, ExternalLink, AlertTriangle, Building2, Layers, Shield, Zap, Gift, Clock, Network } from 'lucide-react';
 
@@ -28,13 +171,14 @@ const Dashboard = () => {
     { symbol: 'CEUR', name: 'Celo Euro (CEUR)', address: '0xd8763cba276a3738e6de85b4b3bf5fded6d6ca73' }
   ];
 
-  // Enhanced protocol configurations (all in one file)
+  // Enhanced protocol configurations with correct network mappings
   const ENHANCED_PROTOCOL_CONFIGS = [
+    // Ethereum protocols
     {
       name: 'Uniswap V3',
       id: 'uniswap-v3',
       gasMultiplier: 1.0,
-      supportedPairs: ['USDC-EURC', 'USDC-EURS', 'USDC-EURT'],
+      supportedPairs: ['USDC-EURC', 'USDC-EURS', 'USDC-EURT', 'USDC-EURe', 'USDC-EURA'],
       network: 'ethereum',
       type: 'DEX'
     },
@@ -42,25 +186,16 @@ const Dashboard = () => {
       name: 'Curve',
       id: 'curve',
       gasMultiplier: 1.3,
-      supportedPairs: ['USDC-EURS', 'USDC-EURT'],
+      supportedPairs: ['USDC-EURS', 'USDC-EURT', 'USDC-EURe'], // Curve focuses on major stablecoins
       optimizedFor: 'stablecoins',
       network: 'ethereum',
       type: 'DEX'
     },
     {
-      name: 'Aerodrome',
-      id: 'aerodrome',
-      gasMultiplier: 0.8,
-      supportedPairs: ['USDC-EURC', 'USDC-EURS'], 
-      network: 'base',
-      type: 'DEX',
-      features: ['ve(3,3)', 'gauge_incentives', 'stable_pools', 'volatile_pools']
-    },
-    {
       name: 'CoW Swap',
       id: 'cowswap',
       gasMultiplier: 0.0,
-      supportedPairs: ['USDC-EURC', 'USDC-EURS', 'USDC-EURT'],
+      supportedPairs: ['USDC-EURC', 'USDC-EURS', 'USDC-EURT', 'USDC-EURe'],
       network: 'ethereum',
       type: 'DEX',
       features: ['mev_protection', 'batch_auctions', 'price_improvement']
@@ -69,7 +204,7 @@ const Dashboard = () => {
       name: '1inch',
       id: '1inch',
       gasMultiplier: 1.8,
-      supportedPairs: ['USDC-EURC', 'USDC-EURS', 'USDC-EURT'],
+      supportedPairs: ['USDC-EURC', 'USDC-EURS', 'USDC-EURT', 'USDC-EURe', 'USDC-EURA'],
       type: 'aggregator',
       network: 'ethereum'
     },
@@ -79,6 +214,62 @@ const Dashboard = () => {
       gasMultiplier: 1.2,
       supportedPairs: ['USDC-EURC', 'USDC-EURS'],
       network: 'ethereum',
+      type: 'DEX'
+    },
+    
+    // Base network protocols
+    {
+      name: 'Aerodrome',
+      id: 'aerodrome',
+      gasMultiplier: 0.8,
+      supportedPairs: ['USDC-EURC'], // Only EURC is available on Base
+      network: 'base',
+      type: 'DEX',
+      features: ['ve(3,3)', 'gauge_incentives', 'stable_pools', 'volatile_pools']
+    },
+    {
+      name: 'Uniswap V3 (Base)',
+      id: 'uniswap-v3-base',
+      gasMultiplier: 0.7,
+      supportedPairs: ['USDC-EURC'],
+      network: 'base',
+      type: 'DEX'
+    },
+    
+    // Polygon network protocols
+    {
+      name: 'Uniswap V3 (Polygon)',
+      id: 'uniswap-v3-polygon',
+      gasMultiplier: 0.1, // Very low gas on Polygon
+      supportedPairs: ['USDC-EURS', 'USDC-EURT'],
+      network: 'polygon',
+      type: 'DEX'
+    },
+    {
+      name: 'QuickSwap',
+      id: 'quickswap',
+      gasMultiplier: 0.1,
+      supportedPairs: ['USDC-EURS'],
+      network: 'polygon',
+      type: 'DEX'
+    },
+    
+    // Gnosis network protocols
+    {
+      name: 'Honeyswap',
+      id: 'honeyswap',
+      gasMultiplier: 0.05, // Ultra low gas on Gnosis
+      supportedPairs: ['USDC-EURe'], // EURe is native to Gnosis/Monerium
+      network: 'gnosis',
+      type: 'DEX',
+      features: ['ultra_low_gas']
+    },
+    {
+      name: 'SushiSwap (Gnosis)',
+      id: 'sushiswap-gnosis',
+      gasMultiplier: 0.05,
+      supportedPairs: ['USDC-EURe'],
+      network: 'gnosis',
       type: 'DEX'
     }
   ];
@@ -188,7 +379,7 @@ const Dashboard = () => {
     setPriceLoading(false);
   };
 
-  // Enhanced quote generation
+  // Enhanced quote generation with proper off-ramp integration
   const generateAllQuotesWithEnhancedSlippage = async (amount, currentEurRate = 0.8069) => {
     try {
       const baseRate = currentEurRate;
@@ -217,16 +408,32 @@ const Dashboard = () => {
               outputAfterSlippage = grossOutput - (grossOutput * slippageData.slippage);
             }
 
-            // Gas calculation
+            // Enhanced gas calculation by network
             let gasCost = 0;
             if (protocol.id !== 'cowswap') {
-              gasCost = protocol.network === 'base' ? 2 : 15;
+              const networkGasCosts = {
+                'ethereum': 15,
+                'base': 2,
+                'polygon': 0.5,
+                'gnosis': 0.1
+              };
+              
+              gasCost = networkGasCosts[protocol.network] || 15;
               if (amount > 50000) gasCost *= 1.2;
               gasCost *= protocol.gasMultiplier;
               gasCost *= (0.8 + Math.random() * 0.4);
             }
 
-            const netOutput = outputAfterSlippage - (gasCost / baseRate);
+            const netOutputAfterGas = outputAfterSlippage - (gasCost / baseRate);
+
+            // CRUCIAL: Calculate off-ramp options for final EUR amount
+            const offrampOptions = generateOfframpOptions(coin.symbol, netOutputAfterGas);
+            const bestOfframp = offrampOptions[0];
+            const finalEurAmount = bestOfframp.finalAmount;
+            
+            // Calculate total cost (trading + off-ramp)
+            const totalTradingCost = gasCost + (Math.abs(actualSlippage) * grossOutput);
+            const totalCostIncludingOfframp = totalTradingCost + bestOfframp.feeAmount;
 
             const quote = {
               id: `${coin.symbol}-${protocol.id}`,
@@ -239,26 +446,43 @@ const Dashboard = () => {
               network: protocol.network,
               features: protocol.features || [],
 
+              // Financial data
               inputAmount: amount,
               grossOutput,
               outputAmount: outputAfterSlippage,
               gasCost,
-              netOutput,
+              netOutputAfterGas, // After gas, before off-ramp
+              
+              // Off-ramp data (CRUCIAL)
+              offrampOptions,
+              bestOfframp,
+              finalEurAmount, // Final amount in bank account
+              offrampFee: bestOfframp.feeAmount,
+              offrampMethod: bestOfframp.name,
 
+              // Slippage data
               slippage: Math.abs(actualSlippage),
               hasImprovement: actualSlippage < 0,
               improvement: actualSlippage < 0 ? Math.abs(actualSlippage) : 0,
               slippageSource: slippageData.method,
               
+              // Protocol-specific metadata
               poolType: protocol.id === 'aerodrome' ? (Math.random() > 0.5 ? 'stable' : 'volatile') : null,
               mevProtection: protocol.features?.includes('mev_protection') || false,
               
-              liquidity: `$${(slippageData.liquidity / 1000000).toFixed(1)}M`,
+              // Enhanced metadata
+              liquidity: `${(slippageData.liquidity / 1000000).toFixed(1)}M`,
               confidence: slippageData.confidence,
               
+              // UI helpers
               slippageWarning: getEnhancedSlippageWarning(actualSlippage, protocol.id),
-              totalCost: gasCost + (Math.abs(actualSlippage) * grossOutput * (1/baseRate)),
+              totalCostBreakdown: {
+                trading: totalTradingCost,
+                offramp: bestOfframp.feeAmount,
+                total: totalCostIncludingOfframp
+              },
               
+              // Route and timing
               route: getProtocolRoute(protocol.id, coin.symbol),
               estimatedTime: getProtocolTiming(protocol.id),
               
@@ -386,8 +610,9 @@ const Dashboard = () => {
       if (a.hasImprovement && !b.hasImprovement) return -1;
       if (!a.hasImprovement && b.hasImprovement) return 1;
       
-      const aFinalAmount = generateOfframpOptions(a.stablecoin, a.netOutput)[0].finalAmount;
-      const bFinalAmount = generateOfframpOptions(b.stablecoin, b.netOutput)[0].finalAmount;
+      // Sort by final EUR amount in bank account (most important metric)
+      const aFinalAmount = a.finalEurAmount;
+      const bFinalAmount = b.finalEurAmount;
       return sortOrder === 'desc' ? bFinalAmount - aFinalAmount : aFinalAmount - bFinalAmount;
     });
   };
@@ -396,13 +621,10 @@ const Dashboard = () => {
     if (allQuotes.length === 0) return {};
     
     return allQuotes.reduce((best, current) => {
-      const currentFinalAmount = generateOfframpOptions(current.stablecoin, current.netOutput)[0].finalAmount;
-      const bestFinalAmount = best.finalAmount || generateOfframpOptions(best.stablecoin, best.netOutput)[0].finalAmount;
+      const currentFinalAmount = current.finalEurAmount;
+      const bestFinalAmount = best.finalEurAmount || 0;
       
-      return currentFinalAmount > bestFinalAmount ? {
-        ...current,
-        finalAmount: currentFinalAmount
-      } : best;
+      return currentFinalAmount > bestFinalAmount ? current : best;
     }, allQuotes[0]);
   };
 
@@ -554,6 +776,8 @@ const Dashboard = () => {
                 <option value="all">All Networks</option>
                 <option value="ethereum">Ethereum</option>
                 <option value="base">Base</option>
+                <option value="polygon">Polygon</option>
+                <option value="gnosis">Gnosis</option>
               </select>
             </div>
             
@@ -568,6 +792,10 @@ const Dashboard = () => {
                 <option value="DEX">DEX Only</option>
                 <option value="aggregator">Aggregators Only</option>
               </select>
+            </div>
+            
+            <div className="text-sm text-gray-600">
+              Showing path from USDC → Euro Stablecoin → EUR in bank account
             </div>
           </div>
         </div>
@@ -585,73 +813,19 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route & Protocol</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Slippage / Improvement</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Final Output</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Network & Features</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Costs & Timing</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedQuotes.map((quote, index) => {
-                    const bestOfframp = generateOfframpOptions(quote.stablecoin, quote.netOutput)[0];
-                    const isTopQuote = index === 0;
-                    
-                    const getSlippageDisplay = (quote) => {
-                      if (quote.hasImprovement) {
-                        return {
-                          text: `+${(quote.improvement * 100).toFixed(2)}%`,
-                          subtext: 'Price improvement',
-                          className: 'text-emerald-700 bg-emerald-100 border-emerald-300',
-                          icon: '🎉'
-                        };
-                      } else {
-                        const colors = {
-                          'excellent': 'text-green-700 bg-green-100 border-green-300',
-                          'good': 'text-blue-700 bg-blue-100 border-blue-300',
-                          'moderate': 'text-yellow-700 bg-yellow-100 border-yellow-300',
-                          'high': 'text-red-700 bg-red-100 border-red-300'
-                        };
-                        return {
-                          text: `${(quote.slippage * 100).toFixed(2)}%`,
-                          subtext: quote.slippageWarning.message,
-                          className: colors[quote.slippageWarning.level] || colors.moderate,
-                          icon: quote.slippageWarning.icon || '📊'
-                        };
-                      }
-                    };
-
-                    const slippageDisplay = getSlippageDisplay(quote);
-                    
-                    return (
-                      <tr 
-                        key={quote.id}
-                        className={`${isTopQuote ? 'bg-green-50 border-l-4 border-l-green-500' : 'hover:bg-gray-50'} ${
-                          quote.hasImprovement ? 'bg-emerald-50' : ''
-                        }`}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mr-3 ${
-                              isTopQuote ? 'bg-green-100 text-green-800' : 
-                              quote.hasImprovement ? 'bg-emerald-100 text-emerald-800' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>
-                              {quote.hasImprovement ? '🏆' : index + 1}
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-gray-900">{quote.stablecoin}</span>
-                                <span className="text-xs text-gray-500">via {quote.name}</span>
-                              </div>
-                              <EnhancedProtocolBadge quote={quote} />
-                              <div className="text-xs text-gray-500 mt-1">
-                                {quote.route.join(' → ')}
-                              </div>
+                            <div className="flex items-center gap-1 text-xs">
+                              {quote.mevProtection && (
+                                <span className="flex items-center gap-1 text-blue-600">
+                                  <Shield className="w-3 h-3" />
+                                  <span>MEV protected</span>
+                                </span>
+                              )}
+                              {quote.features?.includes('gauge_incentives') && (
+                                <span className="flex items-center gap-1 text-purple-600">
+                                  <Gift className="w-3 h-3" />
+                                  <span>Incentives</span>
+                                </span>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -667,74 +841,12 @@ const Dashboard = () => {
                             
                             <div className="text-xs space-y-1">
                               <div className="text-gray-600">{slippageDisplay.subtext}</div>
-                              <div className="flex items-center gap-2">
-                                <span className={`font-medium ${quote.confidence === 'high' ? 'text-green-600' : 'text-gray-500'}`}>
-                                  {quote.confidence} confidence
-                                </span>
-                                {quote.mevProtection && (
-                                  <span className="flex items-center gap-1 text-blue-600">
-                                    <Shield className="w-3 h-3" />
-                                    <span>MEV protected</span>
-                                  </span>
-                                )}
+                              <div className="text-gray-500">
+                                Liquidity: {quote.liquidity}
                               </div>
-                            </div>
-                          </div>
-                        </td>
-                        
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-bold text-gray-900">
-                            {formatCurrency(bestOfframp.finalAmount, 'EUR')}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Final amount in bank
-                          </div>
-                          {quote.hasImprovement && (
-                            <div className="text-xs text-emerald-600 font-medium">
-                              +{formatCurrency(quote.improvement * quote.grossOutput, 'EUR')} bonus
-                            </div>
-                          )}
-                        </td>
-                        
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <Network className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm capitalize">{quote.network}</span>
-                            </div>
-                            
-                            <div className="text-xs text-gray-600">
-                              Liquidity: {quote.liquidity}
-                            </div>
-                            
-                            {quote.poolType && (
-                              <div className="text-xs text-purple-600">
-                                {quote.poolType} pool
+                              <div className={`font-medium ${quote.confidence === 'high' ? 'text-green-600' : 'text-gray-500'}`}>
+                                {quote.confidence} confidence
                               </div>
-                            )}
-                            
-                            {quote.features && quote.features.includes('gauge_incentives') && (
-                              <div className="flex items-center gap-1 text-xs text-purple-600">
-                                <Gift className="w-3 h-3" />
-                                <span>Incentivized</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="space-y-1">
-                            <div className="text-sm text-gray-900">
-                              {quote.gasCost > 0 ? formatCurrency(quote.gasCost) : 'Gasless'}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {quote.protocol === 'cowswap' ? 'Solver pays gas' : 'User pays gas'}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              Time: {quote.estimatedTime}
-                            </div>
-                            <div className="text-xs text-red-500">
-                              vs Perfect: -{formatCurrency(theoreticalPerfect - bestOfframp.finalAmount, 'EUR')}
                             </div>
                           </div>
                         </td>
@@ -747,49 +859,75 @@ const Dashboard = () => {
           </div>
         )}
 
-        {/* Special Features Callout */}
+        {/* Enhanced Features Section */}
         {allQuotes.length > 0 && (
           <div className="bg-gradient-to-r from-blue-50 to-emerald-50 rounded-xl p-6 mt-8 border border-blue-200">
             <div className="flex items-center gap-2 mb-4">
               <Zap className="w-6 h-6 text-blue-600" />
-              <h3 className="text-lg font-semibold text-gray-800">Enhanced Features</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Multi-Network Capabilities</h3>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-emerald-100 rounded-lg p-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="bg-blue-100 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-5 h-5 text-emerald-600" />
-                  <span className="font-medium text-emerald-800">CoW Swap Benefits</span>
+                  <Shield className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-blue-800">Ethereum</span>
                 </div>
-                <div className="text-sm text-emerald-700">
-                  • MEV protection from sandwich attacks<br/>
-                  • Potential price improvements<br/>
-                  • Gasless trading experience
+                <div className="text-sm text-blue-700">
+                  • Highest liquidity<br/>
+                  • CoW Swap MEV protection<br/>
+                  • All major Euro stablecoins
                 </div>
               </div>
               
               <div className="bg-indigo-100 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Network className="w-5 h-5 text-indigo-600" />
-                  <span className="font-medium text-indigo-800">Aerodrome on Base</span>
+                  <span className="font-medium text-indigo-800">Base</span>
                 </div>
                 <div className="text-sm text-indigo-700">
-                  • Ultra-low gas costs (~$2)<br/>
-                  • ve(3,3) gauge incentives<br/>
-                  • Optimized stable pools
+                  • Ultra-low gas (~$2)<br/>
+                  • Aerodrome ve(3,3) incentives<br/>
+                  • EURC only (native)
                 </div>
               </div>
               
-              <div className="bg-blue-100 rounded-lg p-4">
+              <div className="bg-purple-100 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-800">Enhanced Protection</span>
+                  <Zap className="w-5 h-5 text-purple-600" />
+                  <span className="font-medium text-purple-800">Polygon</span>
                 </div>
-                <div className="text-sm text-blue-700">
-                  • Real slippage calculations<br/>
-                  • Cross-chain comparison<br/>
-                  • Best execution routing
+                <div className="text-sm text-purple-700">
+                  • Very low gas (~$0.50)<br/>
+                  • QuickSwap native DEX<br/>
+                  • EURS, EURT support
                 </div>
+              </div>
+              
+              <div className="bg-green-100 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Gift className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-green-800">Gnosis</span>
+                </div>
+                <div className="text-sm text-green-700">
+                  • Ultra-low gas (~$0.10)<br/>
+                  • EURe native (Monerium)<br/>
+                  • Perfect for small trades
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 p-4 bg-white rounded-lg border border-gray-200">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <span className="font-medium text-gray-800">Network-Specific Token Availability</span>
+              </div>
+              <div className="text-sm text-gray-600 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div>• <strong>EURC:</strong> Ethereum, Base (native)</div>
+                <div>• <strong>EURS:</strong> Ethereum, Polygon</div>
+                <div>• <strong>EURT:</strong> Ethereum, Polygon</div>
+                <div>• <strong>EURe:</strong> Ethereum, Gnosis (native)</div>
+                <div>• <strong>EURA:</strong> Ethereum only</div>
               </div>
             </div>
           </div>
@@ -799,24 +937,45 @@ const Dashboard = () => {
         <div className="mt-8 bg-white rounded-xl shadow-lg p-6">
           <div className="flex items-center gap-2 mb-4">
             <Info className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Understanding Enhanced Features</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Complete USDC → Bank Account Journey</h3>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Protocol Types</h4>
+              <h4 className="font-medium text-gray-700 mb-2">Step 1: DEX Trading</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>• <strong>DEX:</strong> Decentralized exchanges with various AMM models</li>
-                <li>• <strong>Aggregator:</strong> Routes through multiple DEXs for best prices</li>
-                <li>• <strong>Batch Auction:</strong> CoW Swap's MEV-protected trading</li>
+                <li>• <strong>Slippage:</strong> Price impact from your trade size</li>
+                <li>• <strong>Gas:</strong> Network transaction fees</li>
+                <li>• <strong>MEV Protection:</strong> CoW Swap prevents sandwich attacks</li>
+                <li>• <strong>Routing:</strong> Best path through liquidity pools</li>
               </ul>
             </div>
             <div>
-              <h4 className="font-medium text-gray-700 mb-2">Network Benefits</h4>
+              <h4 className="font-medium text-gray-700 mb-2">Step 2: Off-ramp to EUR</h4>
               <ul className="space-y-1 text-gray-600">
-                <li>• <strong>Ethereum:</strong> Highest liquidity, most protocols</li>
-                <li>• <strong>Base:</strong> Lower costs, Aerodrome incentives</li>
-                <li>• <strong>Cross-chain:</strong> Compare true total costs</li>
+                <li>• <strong>Exchange fees:</strong> 0.9-2.5% depending on provider</li>
+                <li>• <strong>SEPA transfer:</strong> €1-5 flat fee to your bank</li>
+                <li>• <strong>Timing:</strong> Usually 1-3 business days</li>
+                <li>• <strong>Compliance:</strong> KYC required for fiat withdrawal</li>
               </ul>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-700 mb-2">Network Considerations</h4>
+              <ul className="space-y-1 text-gray-600">
+                <li>• <strong>Ethereum:</strong> High gas, high liquidity, all tokens</li>
+                <li>• <strong>Base:</strong> Low gas, EURC only, growing ecosystem</li>
+                <li>• <strong>Polygon:</strong> Very low gas, good for small amounts</li>
+                <li>• <strong>Gnosis:</strong> Ultra-low gas, EURe native support</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 className="font-medium text-blue-800 mb-2">💡 Pro Tips for Best Execution</h4>
+            <div className="text-sm text-blue-700 space-y-1">
+              <div>• <strong>Small trades (&lt;$5k):</strong> Use Gnosis for EURe or Base for EURC to minimize gas costs</div>
+              <div>• <strong>Large trades (&gt;$50k):</strong> Use CoW Swap on Ethereum for MEV protection and potential price improvements</div>
+              <div>• <strong>Regular trading:</strong> Consider Aerodrome on Base for ve(3,3) incentives and low gas</div>
+              <div>• <strong>Best rates:</strong> Always compare final EUR amount in your bank account, not just DEX output</div>
             </div>
           </div>
         </div>
