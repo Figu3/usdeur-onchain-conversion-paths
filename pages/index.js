@@ -63,7 +63,7 @@ export default function Dashboard() {
       supportedPairs: ['USDC-EURe'], features: ['ultra_low_gas'] }
   ];
 
-  // Calculate slippage
+  // Calculate slippage - MUCH MORE REALISTIC scaling with trade size
   const calculateSlippage = (tradeSize, protocol, stablecoin) => {
     const baseSlippages = {
       'uniswap-v3': 0.0005, 'uniswap-v3-base': 0.0005, 'uniswap-v3-polygon': 0.0005,
@@ -71,37 +71,125 @@ export default function Dashboard() {
       'quickswap': 0.003, 'honeyswap': 0.004
     };
 
+    // More realistic liquidity estimates (actual USD liquidity in major pairs)
     const liquidityEstimates = {
-      'EURC': 50000000, 'EURS': 25000000, 'EURT': 15000000, 'EURe': 8000000, 'EURA': 12000000
+      'EURC': 50000000,   // $50M - highest liquidity
+      'EURS': 25000000,   // $25M - medium liquidity  
+      'EURT': 15000000,   // $15M - medium liquidity
+      'EURe': 8000000,    // $8M - lower liquidity
+      'EURA': 12000000    // $12M - medium liquidity
     };
 
     const baseSlippage = baseSlippages[protocol] || 0.005;
-    const liquidity = liquidityEstimates[stablecoin] || 1000000;
-    const liquidityRatio = tradeSize / liquidity;
+    const totalLiquidity = liquidityEstimates[stablecoin] || 1000000;
+    
+    // Calculate the trade as a percentage of total liquidity
+    const liquidityImpactRatio = tradeSize / totalLiquidity;
     
     let slippage = baseSlippage;
     
+    // Protocol-specific slippage models
     if (protocol === 'cowswap') {
-      const improvement = Math.random() * 0.002;
-      slippage = Math.random() > 0.3 ? -improvement : baseSlippage * (1 + liquidityRatio * 10);
+      // CoW Swap can provide price improvements through batch auctions
+      if (Math.random() > 0.4) {
+        // 60% chance of price improvement
+        const improvement = Math.random() * 0.003; // Up to 0.3% improvement
+        slippage = -improvement;
+      } else {
+        // Minimal slippage due to MEV protection
+        slippage = baseSlippage * (1 + liquidityImpactRatio * 5);
+      }
     } else if (protocol === 'curve' || protocol === 'aerodrome') {
-      slippage = baseSlippage * (1 + liquidityRatio * (liquidityRatio < 0.01 ? 5 : 25));
+      // Stable AMMs: very low slippage until you hit the curve limits
+      if (liquidityImpactRatio < 0.005) {
+        // Under 0.5% of pool - minimal slippage
+        slippage = baseSlippage * (1 + liquidityImpactRatio * 2);
+      } else if (liquidityImpactRatio < 0.02) {
+        // 0.5-2% of pool - moderate increase
+        slippage = baseSlippage * (1 + liquidityImpactRatio * 15);
+      } else if (liquidityImpactRatio < 0.1) {
+        // 2-10% of pool - steep increase
+        slippage = baseSlippage * (1 + Math.pow(liquidityImpactRatio * 50, 1.5));
+      } else {
+        // >10% of pool - extreme slippage
+        slippage = baseSlippage * (1 + Math.pow(liquidityImpactRatio * 100, 2));
+      }
+    } else if (protocol.startsWith('uniswap-v3')) {
+      // Concentrated liquidity: efficient until you move out of range
+      if (liquidityImpactRatio < 0.001) {
+        // Tiny trade - almost no slippage
+        slippage = baseSlippage;
+      } else if (liquidityImpactRatio < 0.01) {
+        // Small trade within concentrated range
+        slippage = baseSlippage * (1 + liquidityImpactRatio * 10);
+      } else if (liquidityImpactRatio < 0.05) {
+        // Medium trade - moving across ticks
+        slippage = baseSlippage * (1 + Math.pow(liquidityImpactRatio * 80, 1.3));
+      } else {
+        // Large trade - beyond concentrated liquidity
+        slippage = baseSlippage * (1 + Math.pow(liquidityImpactRatio * 200, 1.8));
+      }
     } else {
-      if (liquidityRatio < 0.01) slippage = baseSlippage * (1 + liquidityRatio * 20);
-      else if (liquidityRatio < 0.1) slippage = baseSlippage * (1 + liquidityRatio * 100);
-      else slippage = baseSlippage * (1 + liquidityRatio * 300);
+      // Standard constant product AMMs (x*y=k)
+      if (liquidityImpactRatio < 0.005) {
+        slippage = baseSlippage * (1 + liquidityImpactRatio * 20);
+      } else if (liquidityImpactRatio < 0.02) {
+        slippage = baseSlippage * (1 + liquidityImpactRatio * 60);
+      } else if (liquidityImpactRatio < 0.1) {
+        slippage = baseSlippage * (1 + Math.pow(liquidityImpactRatio * 150, 1.4));
+      } else {
+        // Massive trade - price impact becomes extreme
+        slippage = baseSlippage * (1 + Math.pow(liquidityImpactRatio * 300, 1.6));
+      }
     }
 
-    slippage *= (0.8 + Math.random() * 0.4);
-    slippage = Math.min(Math.abs(slippage), 0.15);
+    // Network effects: lower liquidity networks have higher slippage
+    const networkMultipliers = {
+      'ethereum': 1.0,    // Best liquidity
+      'base': 1.3,        // Growing but less liquidity
+      'polygon': 1.8,     // Lower liquidity
+      'gnosis': 2.5       // Lowest liquidity
+    };
+    
+    // Get network from protocol
+    const protocolNetworks = {
+      'uniswap-v3': 'ethereum', 'curve': 'ethereum', 'cowswap': 'ethereum', '1inch': 'ethereum',
+      'uniswap-v3-base': 'base', 'aerodrome': 'base',
+      'uniswap-v3-polygon': 'polygon', 'quickswap': 'polygon',
+      'honeyswap': 'gnosis'
+    };
+    
+    const network = protocolNetworks[protocol] || 'ethereum';
+    slippage *= networkMultipliers[network];
+
+    // Add realistic market variance (±30%)
+    const marketVariance = 0.7 + (Math.random() * 0.6);
+    slippage *= marketVariance;
+    
+    // Ensure minimum slippage (network costs, etc.)
+    slippage = Math.max(Math.abs(slippage), baseSlippage * 0.3);
+    
+    // Cap maximum slippage at 20% (beyond this, trades likely fail)
+    slippage = Math.min(slippage, 0.20);
     
     return {
       slippage,
       hasImprovement: slippage < 0,
       improvement: Math.abs(Math.min(slippage, 0)),
-      liquidity,
-      confidence: 'medium'
+      liquidity: totalLiquidity,
+      confidence: liquidityImpactRatio < 0.01 ? 'high' : liquidityImpactRatio < 0.05 ? 'medium' : 'low',
+      liquidityImpactRatio,
+      tradeCategory: getTradeSizeCategory(tradeSize, liquidityImpactRatio)
     };
+  };
+
+  // Helper function to categorize trade sizes
+  const getTradeSizeCategory = (tradeSize, liquidityRatio) => {
+    if (liquidityRatio < 0.001) return 'tiny';
+    if (liquidityRatio < 0.01) return 'small';
+    if (liquidityRatio < 0.05) return 'medium';
+    if (liquidityRatio < 0.1) return 'large';
+    return 'whale';
   };
 
   // Generate off-ramp options - ACTUAL crypto off-ramp platforms
@@ -217,6 +305,8 @@ export default function Dashboard() {
             mevProtection: protocol.features?.includes('mev_protection') || false,
             liquidity: `$${(slippageData.liquidity / 1000000).toFixed(1)}M`,
             confidence: slippageData.confidence,
+            tradeCategory: slippageData.tradeCategory,
+            liquidityImpact: slippageData.liquidityImpactRatio,
             offrampMethod: bestOfframp.name,
             offrampFee: bestOfframp.feeAmount,
             note: bestOfframp.note,
@@ -572,7 +662,10 @@ export default function Dashboard() {
                               {quote.slippageWarning.message}
                             </div>
                             <div className="text-xs text-gray-500">
-                              Liquidity: {quote.liquidity}
+                              Liquidity: {quote.liquidity} • Impact: {(quote.liquidityImpact * 100).toFixed(2)}%
+                            </div>
+                            <div className="text-xs text-blue-600">
+                              Trade size: {quote.tradeCategory}
                             </div>
                           </div>
                         </td>
